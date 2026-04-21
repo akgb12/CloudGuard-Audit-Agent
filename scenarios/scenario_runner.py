@@ -178,6 +178,89 @@ def build_resource_hijack_events(start_time: datetime, scenario_id: str | None =
     return events
 
 
+def build_hard_benign_events(start_time: datetime, scenario_id: str | None = None) -> List[Dict[str, object]]:
+    """Legitimate operations that can look malicious to deterministic rules."""
+    scenario_id = scenario_id or _new_scenario_id("hard-benign")
+    events: List[Dict[str, object]] = []
+
+    # Legitimate IAM maintenance during after-hours change window.
+    events.extend(
+        [
+            _event(
+                event_time=start_time,
+                actor="secops-admin",
+                action="iam.roles.update",
+                resource="projects/demo/roles/data-analyst",
+                source_ip="10.0.0.12",
+                scenario_id=scenario_id,
+                is_attack=False,
+                metadata={"change_ticket": "CHG-4182", "approved": True},
+            ),
+            _event(
+                event_time=start_time + timedelta(seconds=15),
+                actor="secops-admin",
+                action="iam.setIamPolicy",
+                resource="projects/demo",
+                source_ip="10.0.0.12",
+                scenario_id=scenario_id,
+                is_attack=False,
+                metadata={"change_ticket": "CHG-4182", "approved": True},
+            ),
+        ]
+    )
+
+    # Normal backup replication to third-party DR target (large + external destination).
+    events.append(
+        _event(
+            event_time=start_time + timedelta(seconds=40),
+            actor="service-backup",
+            action="storage.objects.get",
+            resource="projects/demo/buckets/nightly-backups",
+            source_ip="10.0.0.30",
+            scenario_id=scenario_id,
+            is_attack=False,
+            bytes_out=700 * 1024 * 1024,
+            metadata={
+                "external_destination": True,
+                "destination": "vendor-dr-archive",
+                "approved_backup_job": True,
+            },
+        )
+    )
+
+    # Temporary public read for a release artifact bucket during deployment.
+    events.append(
+        _event(
+            event_time=start_time + timedelta(seconds=60),
+            actor="release-bot",
+            action="storage.buckets.setIamPolicy",
+            resource="projects/demo/buckets/release-artifacts",
+            source_ip="10.0.0.44",
+            scenario_id=scenario_id,
+            is_attack=False,
+            metadata={"bucket_public": True, "release_window": True},
+        )
+    )
+
+    # Autoscaler burst for a scheduled model training run.
+    for index in range(12):
+        events.append(
+            _event(
+                event_time=start_time + timedelta(seconds=100 + index * 3),
+                actor="service-autoscaler",
+                action="compute.instances.insert",
+                resource=f"projects/demo/zones/us-central1-a/instances/train-{index}",
+                source_ip="10.0.0.77",
+                scenario_id=scenario_id,
+                is_attack=False,
+                metadata={"job_type": "scheduled-training", "approved": True},
+            )
+        )
+
+    events.sort(key=lambda item: str(item["event_time"]))
+    return events
+
+
 def generate_scenario(name: str, benign_count: int = 60, seed: int = 42) -> List[Dict[str, object]]:
     random.seed(seed)
     start_time = datetime.now(timezone.utc)
@@ -194,6 +277,8 @@ def generate_scenario(name: str, benign_count: int = 60, seed: int = 42) -> List
         return build_public_exposure_events(start_time)
     if name == "resource-hijack":
         return build_resource_hijack_events(start_time)
+    if name == "hard-benign":
+        return build_hard_benign_events(start_time)
     if name == "mixed":
         events: List[Dict[str, object]] = []
         events.extend(build_benign_events(benign_count, start_time, _new_scenario_id("benign")))
@@ -202,6 +287,18 @@ def generate_scenario(name: str, benign_count: int = 60, seed: int = 42) -> List
         events.extend(build_exfiltration_events(start_time + timedelta(seconds=280)))
         events.extend(build_public_exposure_events(start_time + timedelta(seconds=320)))
         events.extend(build_resource_hijack_events(start_time + timedelta(seconds=360)))
+        events.sort(key=lambda item: str(item["event_time"]))
+        return events
+
+    if name == "mixed-hard":
+        events: List[Dict[str, object]] = []
+        events.extend(build_benign_events(benign_count, start_time, _new_scenario_id("benign")))
+        events.extend(build_hard_benign_events(start_time + timedelta(seconds=100), _new_scenario_id("hard-benign")))
+        events.extend(build_bruteforce_events(start_time + timedelta(seconds=220)))
+        events.extend(build_privilege_escalation_events(start_time + timedelta(seconds=320)))
+        events.extend(build_exfiltration_events(start_time + timedelta(seconds=380)))
+        events.extend(build_public_exposure_events(start_time + timedelta(seconds=420)))
+        events.extend(build_resource_hijack_events(start_time + timedelta(seconds=460)))
         events.sort(key=lambda item: str(item["event_time"]))
         return events
 
@@ -268,7 +365,9 @@ def main() -> None:
             "data-exfiltration",
             "public-exposure",
             "resource-hijack",
+            "hard-benign",
             "mixed",
+            "mixed-hard",
         ],
         default="mixed",
     )
