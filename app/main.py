@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Query
 from app.config import get_settings
 from app.correlation import Correlator
 from app.detectors import DetectorEngine
-from app.llm_adapter import build_llm_adapter
+from app.llm_adapter import build_incident_analyst
 from app.models import SecurityEvent
 from app.pipeline import AgentPipeline
 from app.response import ResponsePlanner
@@ -32,7 +32,7 @@ pipeline = AgentPipeline(
     correlator=Correlator(settings.correlation_window_seconds),
     triage=TriageEngine(),
     responder=ResponsePlanner(),
-    llm=build_llm_adapter(settings),
+    analyst=build_incident_analyst(settings, store),
 )
 
 app = FastAPI(title="CloudGuard Agent Prototype", version="0.1.0")

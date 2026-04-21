@@ -10,6 +10,18 @@ def _get_int(name: str, default: int) -> int:
         return default
 
 
+def _get_bool(name: str, default: bool) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    normalized = raw_value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
 @dataclass(frozen=True)
 class Settings:
     app_env: str
@@ -22,10 +34,13 @@ class Settings:
     offhours_start: int
     offhours_end: int
     alert_min_risk: int
-    llm_mode: str
-    llm_http_url: str
-    llm_api_key: str
-    llm_model: str
+    llm_provider: str
+    ollama_base_url: str
+    ollama_model: str
+    openai_api_key: str
+    openai_model: str
+    langchain_verbose: bool
+    agent_memory_sqlite_path: str
 
 
 def get_settings() -> Settings:
@@ -40,8 +55,11 @@ def get_settings() -> Settings:
         offhours_start=_get_int("OFFHOURS_START", 20),
         offhours_end=_get_int("OFFHOURS_END", 6),
         alert_min_risk=_get_int("ALERT_MIN_RISK", 45),
-        llm_mode=os.getenv("LLM_MODE", "template").lower(),
-        llm_http_url=os.getenv("LLM_HTTP_URL", ""),
-        llm_api_key=os.getenv("LLM_API_KEY", ""),
-        llm_model=os.getenv("LLM_MODEL", "agent-default"),
+        llm_provider=os.getenv("LLM_PROVIDER", "ollama").lower(),
+        ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        ollama_model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
+        openai_api_key=os.getenv("OPENAI_API_KEY", ""),
+        openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        langchain_verbose=_get_bool("LANGCHAIN_VERBOSE", False),
+        agent_memory_sqlite_path=os.getenv("AGENT_MEMORY_SQLITE_PATH", "/tmp/agent_memory.db"),
     )

@@ -4,7 +4,7 @@ from typing import List
 from app.config import Settings
 from app.correlation import Correlator
 from app.detectors import DetectorEngine
-from app.llm_adapter import LLMAdapter
+from app.llm_adapter import IncidentAnalyst
 from app.models import Incident, SecurityEvent
 from app.response import ResponsePlanner
 from app.storage import Store
@@ -20,7 +20,7 @@ class AgentPipeline:
         correlator: Correlator,
         triage: TriageEngine,
         responder: ResponsePlanner,
-        llm: LLMAdapter,
+        analyst: IncidentAnalyst,
     ) -> None:
         self.settings = settings
         self.store = store
@@ -28,7 +28,7 @@ class AgentPipeline:
         self.correlator = correlator
         self.triage = triage
         self.responder = responder
-        self.llm = llm
+        self.analyst = analyst
 
     def process_event(self, event: SecurityEvent) -> List[Incident]:
         now = datetime.now(timezone.utc)
@@ -57,9 +57,21 @@ class AgentPipeline:
             incident.labels = dict(triage_result["labels"])
             incident.detection_time = datetime.now(timezone.utc)
             incident.triage_time = datetime.now(timezone.utc)
-            incident.recommendation = self.responder.recommend(incident.incident_type, incident.risk_score, event)
+
+            baseline_recommendation = self.responder.recommend(incident.incident_type, incident.risk_score, event)
+            analysis = self.analyst.analyze(event, incident, signal, related_events)
+
+            incident.risk_score = max(0.0, min(100.0, incident.risk_score + analysis.risk_adjustment))
+            incident.summary = f"{analysis.summary} Technical analysis: {analysis.technical_analysis}"
+            incident.labels["confidence_reasoning"] = analysis.confidence_reasoning
+            incident.labels["containment_actions"] = " | ".join(analysis.containment_actions)
+
+            combined_actions = analysis.recommended_actions[:]
+            combined_actions.insert(0, baseline_recommendation)
+            incident.recommendation = "\n".join(
+                f"- {item}" for item in combined_actions if item.strip()
+            )
             incident.recommendation_time = datetime.now(timezone.utc)
-            incident.summary = self.llm.summarize(event, incident, signal)
 
             if incident.risk_score < self.settings.alert_min_risk:
                 incident.status = "suppressed"
