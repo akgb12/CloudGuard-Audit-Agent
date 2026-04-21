@@ -8,8 +8,7 @@ from langchain.agents import AgentType, initialize_agent
 from langchain.memory import ConversationBufferMemory
 from langchain.tools import Tool
 from langchain_community.chat_message_histories import SQLChatMessageHistory
-from langchain_ollama import ChatOllama
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.config import Settings
 from app.models import DetectionSignal, Incident, SecurityEvent
@@ -172,18 +171,11 @@ class LangChainIncidentAnalyst:
         self.model = self._build_model()
 
     def _build_model(self):
-        if self.settings.llm_provider == "openai" and self.settings.openai_api_key:
-            return ChatOpenAI(
-                api_key=self.settings.openai_api_key,
-                model=self.settings.openai_model,
-                temperature=0.1,
-                timeout=20,
-            )
-
-        return ChatOllama(
-            base_url=self.settings.ollama_base_url,
-            model=self.settings.ollama_model,
+        return ChatGoogleGenerativeAI(
+            google_api_key=self.settings.gemini_api_key,
+            model=self.settings.gemini_model,
             temperature=0.1,
+            timeout=20,
         )
 
     def _build_memory(self, session_id: str) -> ConversationBufferMemory:

@@ -34,11 +34,8 @@ class Settings:
     offhours_start: int
     offhours_end: int
     alert_min_risk: int
-    llm_provider: str
-    ollama_base_url: str
-    ollama_model: str
-    openai_api_key: str
-    openai_model: str
+    gemini_api_key: str
+    gemini_model: str
     langchain_verbose: bool
     agent_memory_sqlite_path: str
 
@@ -55,11 +52,8 @@ def get_settings() -> Settings:
         offhours_start=_get_int("OFFHOURS_START", 20),
         offhours_end=_get_int("OFFHOURS_END", 6),
         alert_min_risk=_get_int("ALERT_MIN_RISK", 45),
-        llm_provider=os.getenv("LLM_PROVIDER", "ollama").lower(),
-        ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        ollama_model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
-        openai_api_key=os.getenv("OPENAI_API_KEY", ""),
-        openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         langchain_verbose=_get_bool("LANGCHAIN_VERBOSE", False),
         agent_memory_sqlite_path=os.getenv("AGENT_MEMORY_SQLITE_PATH", "/tmp/agent_memory.db"),
     )

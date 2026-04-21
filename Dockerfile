@@ -15,9 +15,7 @@ ENV PORT=8080
 ENV STORE_BACKEND=sqlite
 ENV SQLITE_PATH=/data/cloudguard.db
 ENV AGENT_MEMORY_SQLITE_PATH=/data/agent_memory.db
-ENV LLM_PROVIDER=ollama
-ENV OLLAMA_BASE_URL=http://ollama:11434
-ENV OLLAMA_MODEL=llama3.2:3b
+ENV GEMINI_MODEL=gemini-2.5-flash
 EXPOSE 8080
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

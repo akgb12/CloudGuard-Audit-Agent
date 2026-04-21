@@ -71,7 +71,6 @@ plus a local Docker simulation stack for cheap end-to-end testing.
 ## Fastest Path: Docker Local Simulation
 
 This runs everything locally:
-- `ollama` for local LLM inference
 - `cloudguard-agent` for API + LangChain orchestration
 - optional `simulator` container for recurring attack/benign scenario injection
 
@@ -82,7 +81,7 @@ docker compose up --build -d
 ```
 
 Notes:
-- First boot pulls Ollama model (`llama3.2:3b` by default), which can take time.
+- Requires `GEMINI_API_KEY` in `.env`.
 - API will be on `http://localhost:8000`.
 
 ### 2) Inject one mixed scenario locally
@@ -111,15 +110,14 @@ docker compose --profile sim up -d simulator
 
 ## Non-Docker Local Run
 
-Use this if you already have Python + Ollama installed locally.
+Use this if you already have Python installed locally.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-export LLM_PROVIDER=ollama
-export OLLAMA_BASE_URL=http://localhost:11434
-export OLLAMA_MODEL=llama3.2:3b
+export GEMINI_API_KEY=<your-key>
+export GEMINI_MODEL=gemini-2.5-flash
 ./scripts/run_local.sh
 ```
 
@@ -127,16 +125,12 @@ export OLLAMA_MODEL=llama3.2:3b
 
 Primary env vars in `.env.example`:
 
-- `LLM_PROVIDER=ollama|openai`
-- `OLLAMA_BASE_URL=http://localhost:11434`
-- `OLLAMA_MODEL=llama3.2:3b`
-- `OPENAI_API_KEY=<optional>`
-- `OPENAI_MODEL=gpt-4o-mini`
+- `GEMINI_API_KEY=<required>`
+- `GEMINI_MODEL=gemini-2.5-flash`
 - `AGENT_MEMORY_SQLITE_PATH=/tmp/agent_memory.db`
 - `LANGCHAIN_VERBOSE=false`
 
-If `LLM_PROVIDER=openai` and key is set, agent uses OpenAI.
-Otherwise it defaults to Ollama.
+Agent uses Gemini only.
 
 ## Research Metrics Available
 

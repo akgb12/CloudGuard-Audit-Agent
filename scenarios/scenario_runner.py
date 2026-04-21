@@ -208,11 +208,25 @@ def generate_scenario(name: str, benign_count: int = 60, seed: int = 42) -> List
     raise ValueError(f"Unsupported scenario: {name}")
 
 
-def send_events_http(events: List[Dict[str, object]], api_url: str, pause_ms: int = 0) -> None:
+def send_events_http(
+    events: List[Dict[str, object]],
+    api_url: str,
+    pause_ms: int = 0,
+    request_timeout_seconds: int = 30,
+    max_retries: int = 2,
+) -> None:
     ingest_url = f"{api_url.rstrip('/')}/ingest/event"
     for event in events:
-        response = requests.post(ingest_url, json=event, timeout=10)
-        response.raise_for_status()
+        attempts = 0
+        while True:
+            try:
+                response = requests.post(ingest_url, json=event, timeout=request_timeout_seconds)
+                response.raise_for_status()
+                break
+            except requests.exceptions.ReadTimeout:
+                if attempts >= max_retries:
+                    raise
+                attempts += 1
         if pause_ms > 0:
             time.sleep(pause_ms / 1000.0)
 
@@ -265,12 +279,20 @@ def main() -> None:
     parser.add_argument("--benign-count", type=int, default=60)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--pause-ms", type=int, default=50)
+    parser.add_argument("--request-timeout-seconds", type=int, default=30)
+    parser.add_argument("--max-retries", type=int, default=2)
     args = parser.parse_args()
 
     events = generate_scenario(args.scenario, benign_count=args.benign_count, seed=args.seed)
 
     if args.mode == "http":
-        send_events_http(events, args.api_url, pause_ms=args.pause_ms)
+        send_events_http(
+            events,
+            args.api_url,
+            pause_ms=args.pause_ms,
+            request_timeout_seconds=args.request_timeout_seconds,
+            max_retries=args.max_retries,
+        )
     else:
         if not args.project_id:
             raise ValueError("--project-id is required for Pub/Sub mode")

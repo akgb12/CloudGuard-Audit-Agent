@@ -1,45 +1,16 @@
 services:
-  ollama:
-    image: ollama/ollama:latest
-    container_name: cloudguard-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-
-  ollama-init:
-    image: ollama/ollama:latest
-    container_name: cloudguard-ollama-init
-    depends_on:
-      ollama:
-        condition: service_healthy
-    entrypoint: ["/bin/sh", "-c"]
-    command: "ollama pull ${OLLAMA_MODEL:-llama3.2:3b}"
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-    restart: "no"
-
   cloudguard-agent:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: cloudguard-agent
-    depends_on:
-      ollama-init:
-        condition: service_completed_successfully
     environment:
       APP_ENV: docker
       STORE_BACKEND: sqlite
       SQLITE_PATH: /data/cloudguard.db
       AGENT_MEMORY_SQLITE_PATH: /data/agent_memory.db
-      LLM_PROVIDER: ollama
-      OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       LANGCHAIN_VERBOSE: "false"
       ALERT_MIN_RISK: "45"
     ports:
@@ -76,5 +47,4 @@ services:
       - sim
 
 volumes:
-  ollama_data:
   cloudguard_data:
